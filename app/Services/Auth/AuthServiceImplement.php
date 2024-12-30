@@ -5,6 +5,7 @@ namespace App\Services\Auth;
 use LaravelEasyRepository\Service;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Helpers\ResponseHelpers;
+use App\Http\Helpers\ResponseMapper;
 use App\Repositories\User\UserRepository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -32,27 +33,27 @@ class AuthServiceImplement extends Service implements AuthService{
         $user = $this->mainRepository->findByEmail($request->email);
     
         if (is_null($user)) {
-            return ResponseHelpers::sendError('No user found', [], 404);
+            return ResponseMapper::NotFound('No user found');
         }
     
         // Check password
         if (!Hash::check($request->password, $user->password)) {
-            return ResponseHelpers::sendError('The provided credentials are incorrect.', [], 401);
+            return ResponseMapper::Unauthorized('The provided credentials are incorrect.');
         }
     
         // Generate token using Passport
         $token = $user->createToken('authToken')->accessToken;
     
-        return ResponseHelpers::sendSuccess('Login Successful', [
+        return ResponseMapper::Success([
             'token' => $token,
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
             ],
-        ], 200);
+        ], 'Login Successful');
       } catch (\Exception $e) {
-      return ResponseHelpers::sendError('Something went wrong during login',[$e],500);
+      return ResponseMapper::InternalServerError('Something went wrong during login',[$e->getMessage()]);
     }
     }
     
@@ -72,19 +73,19 @@ class AuthServiceImplement extends Service implements AuthService{
 
             $token = $user->createToken('authToken')->accessToken;
 
-            return ResponseHelpers::sendSuccess('Registration Successful', [
+            return ResponseMapper::Success([
                 'token' => $token,
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
                 ],
-            ], 201);
+            ], 'Registration Successful');
               } catch (\Exception $e) {
       DB::rollBack();
       Log::error('Logout failed: '.$e->getMessage(), ['exception' => $e]);
 
-              return ResponseHelpers::sendError('Something went wrong during Register',[$e],500);
+              return ResponseMapper::InternalServerError('Something went wrong during Register',$e->getMessage());
             }
     }
 
@@ -100,9 +101,9 @@ class AuthServiceImplement extends Service implements AuthService{
                   $token->delete();
               });
 
-              return ResponseHelpers::sendSuccess('Logout successful', [], 200);
+              return ResponseMapper::Success('Logout successful');
           } catch (\Exception $e) {
-              return ResponseHelpers::sendError('Something went wrong while logging out', [$e->getMessage()], 500);
+              return ResponseMapper::InternalServerError('Something went wrong while logging out', [$e->getMessage()]);
           }
       }
 
@@ -114,18 +115,18 @@ class AuthServiceImplement extends Service implements AuthService{
               $user = Auth::user();
 
               if (!$user) {
-                  return ResponseHelpers::sendError('User not found', [], 404);
+                  return ResponseMapper::NotFound('User not found');
               }
 
-              return ResponseHelpers::sendSuccess('Profile fetched successfully', [
+              return ResponseMapper::Success('Profile fetched successfully', [
                   'user' => [
                       'id' => $user->id,
                       'name' => $user->name,
                       'email' => $user->email,
                   ]
-              ], 200);
+              ]);
           } catch (\Exception $e) {
-              return ResponseHelpers::sendError('Something went wrong while fetching profile', [$e->getMessage()], 500);
+              return ResponseMapper::InternalServerError('Something went wrong while fetching profile', [$e->getMessage()]);
           }
       }
 
